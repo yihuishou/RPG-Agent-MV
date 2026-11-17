@@ -1,4 +1,4 @@
-export type SlashCommandDisplay = "composer_hint" | "chat_status";
+export type SlashCommandDisplay = "composer_hint" | "chat_status" | "composer_fill";
 
 export interface SlashCommandListItem {
   name: string;
@@ -41,5 +41,7 @@ export interface SlashCommandResult {
   message: string;
   messageKey?: string;
   messageParams?: Record<string, string | number>;
+  /** composer_fill: full text to place into the composer for the user to review and send. */
+  fillText?: string;
   data?: SlashCommandTokenData;
 }

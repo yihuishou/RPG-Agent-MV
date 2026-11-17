@@ -545,6 +545,7 @@ const zhCN = {
     'slash.tokens.overlay.percentRemaining': '{{percent}}% 已用（剩余 {{remaining}}%）',
     'slash.tokens.overlay.used': '已用 {{used}} / {{total}}',
     'slash.compact.description': '压缩当前对话上下文',
+    'slash.plotroute.description': '按剧情路线指引修改相关内容（后附路线描述）',
     'slash.noActiveSession': '当前没有可操作的对话会话。',
     'conversation.new': '新建对话',
     'conversation.loading': '加载中…',

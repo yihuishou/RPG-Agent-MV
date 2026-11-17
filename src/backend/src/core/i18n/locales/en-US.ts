@@ -90,6 +90,9 @@ const enUS = {
     'slash.compact.done': 'Conversation context compacted',
     'slash.compact.failed': 'Compaction failed: {{reason}}',
     'slash.compact.noModel': 'No model is bound to this conversation, so context compaction cannot run. Select a model in the composer first.',
+    'slash.plotroute.description': 'Modify content from a plot route guidance (append the route)',
+    'slash.plotroute.missingArgs': 'Append your plot route guidance after /plot-route, e.g. /plot-route The hero meets the merchant in the village, then defeats the mine boss with the key',
+    'slash.plotroute.template': 'Load the plot-route skill and follow its workflow for this plot route guidance: structure the route nodes, verify each against the project, then apply controlled changes.\n\n{{route}}',
     'slash.unknown': 'Unknown slash command: /{{command}}',
 } as const
 

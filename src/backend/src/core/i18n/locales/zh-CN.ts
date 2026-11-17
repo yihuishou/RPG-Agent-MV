@@ -90,6 +90,9 @@ const zhCN = {
     'slash.compact.done': '上下文已压缩',
     'slash.compact.failed': '压缩失败：{{reason}}',
     'slash.compact.noModel': '当前对话未绑定模型，无法压缩上下文。请先在输入框选择模型。',
+    'slash.plotroute.description': '按剧情路线指引修改相关内容（后附路线描述）',
+    'slash.plotroute.missingArgs': '请在 /plot-route 后附上剧情路线指引，例如：/plot-route 主角先在村庄遇见商人，拿到钥匙后去矿山打败 BOSS',
+    'slash.plotroute.template': '请加载 plot-route skill，按其流程处理以下剧情路线指引：先结构化路线节点并逐节点工程取证，再按受控写入通道执行修改。\n\n{{route}}',
     'slash.unknown': '未知斜杠命令：/{{command}}',
 } as const
 

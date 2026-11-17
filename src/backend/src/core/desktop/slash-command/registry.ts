@@ -4,6 +4,7 @@ import type { SlashCommandListItem } from "./types.ts";
 export const SLASH_COMMANDS: SlashCommandListItem[] = [
   { name: "compact", descriptionKey: "slash.compact.description" },
   { name: "help", descriptionKey: "slash.help.description" },
+  { name: "plot-route", descriptionKey: "slash.plotroute.description" },
 ];
 
 /** Still executable when typed manually; not listed in autocomplete. */

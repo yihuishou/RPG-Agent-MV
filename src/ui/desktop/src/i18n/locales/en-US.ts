@@ -547,6 +547,7 @@ const enUS = {
     'slash.tokens.overlay.percentRemaining': '{{percent}}% used ({{remaining}}% remaining)',
     'slash.tokens.overlay.used': '{{used}} / {{total}} tokens',
     'slash.compact.description': 'Compact the current conversation context',
+    'slash.plotroute.description': 'Modify content from a plot route guidance (append the route)',
     'slash.noActiveSession': 'No active conversation session is available.',
     'conversation.new': 'New conversation',
     'conversation.loading': 'Loading...',

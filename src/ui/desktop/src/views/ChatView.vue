@@ -110,6 +110,7 @@
 
         <ChatComposer
           v-if="!activeAsk"
+          ref="composerRef"
           v-model="inputMsg"
           :is-running="isRunning"
           :available-providers="availableProviders"
@@ -305,6 +306,7 @@ function formatErrorText(errorValue: unknown, fallback?: string): string {
 const savedComposerPrefs = workspaceStore.settings.composer || {}
 
 const inputMsg = ref('')
+const composerRef = ref<InstanceType<typeof ChatComposer> | null>(null)
 const slashCommands = ref<SlashCommandListItem[]>([])
 const composerHint = ref('')
 const composerHintVariant = ref<'info' | 'error'>('info')
@@ -575,6 +577,12 @@ async function handleSlashCommand(command: string, args = ''): Promise<void> {
 
   try {
     const result = await sessionsApi.slashCommand(sessionId, command, args)
+    if (result.display === 'composer_fill') {
+      // 模板回填到输入框由用户审阅后发送，不直接投递给 Agent。
+      inputMsg.value = result.fillText ?? ''
+      composerRef.value?.focusComposer()
+      return
+    }
     if (result.display === 'composer_hint') {
       if (result.ok && result.messageKey === 'slash.tokens.summary') {
         if (

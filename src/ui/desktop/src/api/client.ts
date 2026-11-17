@@ -586,10 +586,11 @@ export interface SlashCommandListItem {
 
 export interface SlashCommandResult {
   ok: boolean;
-  display: 'composer_hint' | 'chat_status';
+  display: 'composer_hint' | 'chat_status' | 'composer_fill';
   message: string;
   messageKey?: string;
   messageParams?: Record<string, string | number>;
+  fillText?: string;
   data?: {
     contextUsedTokens?: number;
     contextWindowTokens?: number;

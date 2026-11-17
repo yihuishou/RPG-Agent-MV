@@ -197,7 +197,34 @@ export class SlashCommandService {
       return this.executeCompact(session, language);
     }
 
+    if (definition.name === "plot-route") {
+      return this.executePlotRoute(language, input.args);
+    }
+
     return unknownResult(language, input.command);
+  }
+
+  /**
+   * plot-route 不在后端直接发送消息：把路线指引包装成指向 plot-route skill 的
+   * 提示模板回填到输入框，由用户审阅后回车发送，保持与普通消息相同的意图审查流程。
+   */
+  private executePlotRoute(language: ProductLanguage, args: string | undefined): SlashCommandResult {
+    const route = args?.trim() ?? "";
+    if (!route) {
+      return {
+        ok: false,
+        display: "composer_hint",
+        message: localized(language, "slash.plotroute.missingArgs"),
+        messageKey: "slash.plotroute.missingArgs",
+      };
+    }
+
+    return {
+      ok: true,
+      display: "composer_fill",
+      message: "",
+      fillText: localized(language, "slash.plotroute.template", { route }),
+    };
   }
 
   private async resolveContextUsage(

@@ -241,6 +241,15 @@ function applySlashCommand(name: string) {
   })
 }
 
+function focusComposer() {
+  void nextTick(() => {
+    textareaRef.value?.focus()
+    resizeTextarea()
+  })
+}
+
+defineExpose({ focusComposer })
+
 function onBlur() {
   focused.value = false
 }

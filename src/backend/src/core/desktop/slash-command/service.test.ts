@@ -236,3 +236,33 @@ test("compact without bound model fails fast", async () => {
   assert.equal(result.ok, false);
   assert.equal(result.messageKey, "slash.compact.noModel");
 });
+
+test("plot-route without args returns usage hint", async () => {
+  const service = new SlashCommandService({
+    workflowRoot: "/tmp/workflow",
+    getSession: () => createSession(),
+    stopSession: () => {},
+  });
+
+  for (const args of ["", "   "]) {
+    const result = await service.execute({ sessionId: "sess-1", command: "plot-route", args });
+    assert.equal(result.ok, false);
+    assert.equal(result.display, "composer_hint");
+    assert.equal(result.messageKey, "slash.plotroute.missingArgs");
+  }
+});
+
+test("plot-route with route guidance returns composer fill template", async () => {
+  const service = new SlashCommandService({
+    workflowRoot: "/tmp/workflow",
+    getSession: () => createSession(),
+    stopSession: () => {},
+  });
+
+  const route = "The hero meets the merchant in the village, then defeats the mine boss";
+  const result = await service.execute({ sessionId: "sess-1", command: "plot-route", args: route });
+  assert.equal(result.ok, true);
+  assert.equal(result.display, "composer_fill");
+  assert.ok(result.fillText?.includes("plot-route"));
+  assert.ok(result.fillText?.includes(route));
+});

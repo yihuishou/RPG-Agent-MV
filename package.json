@@ -25,7 +25,7 @@
     "node": ">=22.5.0"
   },
   "dependencies": {
-    "@opencode-ai/sdk": "1.17.7",
-    "opencode-ai": "1.17.7"
+    "@opencode-ai/sdk": "1.19.6",
+    "opencode-ai": "1.19.6"
   }
 }

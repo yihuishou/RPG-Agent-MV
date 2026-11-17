@@ -1,5 +1,4 @@
-import { EventV2 } from "@opencode-ai/core/event"
-import { SessionID, MessageID, PartID } from "./schema"
+import { SessionID, MessageID } from "./schema"
 import { SessionV1 } from "@opencode-ai/core/v1/session"
 import { ProviderV2 } from "@opencode-ai/core/provider"
 import {
@@ -12,16 +11,15 @@ import {
   Info,
   OutputLengthError,
   Part,
-  StructuredOutputError,
   SubtaskPart,
   User,
   WithParts,
-  type ToolPart,
 } from "@opencode-ai/core/v1/session"
 
 import { NamedError } from "@opencode-ai/core/util/error"
 import { APICallError, convertToModelMessages, LoadAPIKeyError, type ModelMessage, type UIMessage } from "ai"
 import { Database } from "@opencode-ai/core/database/database"
+import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { NotFoundError } from "@/storage/storage"
 import { and } from "drizzle-orm"
 import { desc } from "drizzle-orm"
@@ -48,6 +46,11 @@ interface FetchDecompressionError extends Error {
 export const SYNTHETIC_ATTACHMENT_PROMPT = "Attached media from tool result:"
 export { isMedia }
 
+const IMAGE_BYTES_TRIGGER = 25 * 1024 * 1024 // 25 MiB
+const IMAGE_BYTES_TARGET = 15 * 1024 * 1024 // 15 MiB
+const IMAGE_REMOVED =
+  "[This image was removed to reduce the request size and is no longer visible. Do not make claims about its contents from memory. If needed, retrieve it again with an available tool or ask the user to attach it again.]"
+
 function truncateToolOutput(text: string, maxChars?: number) {
   if (!maxChars || text.length <= maxChars) return text
   const omitted = text.length - maxChars
@@ -58,16 +61,7 @@ export const Event = {
   Updated: SessionV1.Event.MessageUpdated,
   Removed: SessionV1.Event.MessageRemoved,
   PartUpdated: SessionV1.Event.PartUpdated,
-  PartDelta: EventV2.define({
-    type: "message.part.delta",
-    schema: {
-      sessionID: SessionID,
-      messageID: MessageID,
-      partID: PartID,
-      field: Schema.String,
-      delta: Schema.String,
-    },
-  }),
+  PartDelta: SessionV1.Event.PartDelta,
   PartRemoved: SessionV1.Event.PartRemoved,
 }
 
@@ -159,7 +153,11 @@ export const toModelMessagesEffect = Effect.fnUntraced(function* (
     if (model.api.npm === "@ai-sdk/anthropic") return true
     if (model.api.npm === "@ai-sdk/openai") return true
     if (model.api.npm === "@ai-sdk/amazon-bedrock/mantle") return true
-    if (model.api.npm === "@ai-sdk/amazon-bedrock") return attachment.mime.startsWith("image/")
+    if (model.api.npm === "@ai-sdk/amazon-bedrock") {
+      if (!attachment.mime.startsWith("image/")) return false
+      const id = model.api.id.toLowerCase()
+      return id.includes("anthropic.") || id.includes("nova") || id.includes("llama4") || id.includes("llama-4")
+    }
     if (model.api.npm === "@ai-sdk/xai") return attachment.mime.startsWith("image/")
     if (model.api.npm === "@ai-sdk/google-vertex/anthropic") return true
     if (model.api.npm === "@ai-sdk/google") {
@@ -168,6 +166,12 @@ export const toModelMessagesEffect = Effect.fnUntraced(function* (
     }
     return false
   }
+
+  // xAI rejects any other image format (e.g. GIF) with invalid_image, failing the whole request.
+  const rejectedByProvider = (attachment: { mime: string }) =>
+    model.api.npm === "@ai-sdk/xai" &&
+    attachment.mime.startsWith("image/") &&
+    !["image/png", "image/jpeg", "image/webp"].includes(attachment.mime)
 
   const toModelOutput = (options: { toolCallId: string; input: unknown; output: unknown }) => {
     const output = options.output
@@ -304,7 +308,10 @@ export const toModelMessagesEffect = Effect.fnUntraced(function* (
             const outputText = part.state.time.compacted
               ? "[Old tool result content cleared]"
               : truncateToolOutput(part.state.output, options?.toolOutputMaxChars)
-            const attachments = part.state.time.compacted || options?.stripMedia ? [] : (part.state.attachments ?? [])
+            const attachments =
+              part.state.time.compacted || options?.stripMedia
+                ? []
+                : (part.state.attachments ?? []).filter((a) => !rejectedByProvider(a))
 
             // For providers that don't support media in tool results, extract media files
             // (images, PDFs) to be sent as a separate user message
@@ -414,13 +421,15 @@ export const toModelMessagesEffect = Effect.fnUntraced(function* (
 
   const tools = Object.fromEntries(Array.from(toolNames).map((toolName) => [toolName, { toModelOutput }]))
 
-  return yield* Effect.promise(() =>
-    convertToModelMessages(
-      result.filter((msg) => msg.parts.some((part) => part.type !== "step-start")),
-      {
-        //@ts-expect-error (convertToModelMessages expects a ToolSet but only actually needs tools[name]?.toModelOutput)
-        tools,
-      },
+  return boundImages(
+    yield* Effect.promise(() =>
+      convertToModelMessages(
+        result.filter((msg) => msg.parts.some((part) => part.type !== "step-start")),
+        {
+          //@ts-expect-error (convertToModelMessages expects a ToolSet but only actually needs tools[name]?.toModelOutput)
+          tools,
+        },
+      ),
     ),
   )
 })
@@ -431,6 +440,61 @@ export function toModelMessages(
   options?: { stripMedia?: boolean; toolOutputMaxChars?: number },
 ): Promise<ModelMessage[]> {
   return Effect.runPromise(toModelMessagesEffect(input, model, options))
+}
+
+/**
+ * Images stay in history and are re-sent on every request, but cost almost no tokens, so compaction never removes
+ * them. Once the inline images pass the trigger, the oldest are replaced with a placeholder until the rest fit the
+ * target.
+ */
+export function boundImages(messages: ModelMessage[]) {
+  const sizes: number[] = []
+  replaceImages(messages, (bytes) => {
+    sizes.push(bytes)
+    return false
+  })
+  // Replay the images in order, dropping the oldest down to the target whenever the kept payload passes the trigger.
+  // A new image then moves the cut only every (trigger - target) bytes instead of on every request, so the replaced
+  // prefix, and with it the provider's prompt cache, stays the same between cuts.
+  let cut = 0
+  let kept = 0
+  for (const size of sizes) {
+    kept += size
+    if (kept <= IMAGE_BYTES_TRIGGER) continue
+    while (kept > IMAGE_BYTES_TARGET) kept -= sizes[cut++]!
+  }
+  if (cut === 0) return messages
+
+  let index = 0
+  return replaceImages(messages, () => index++ < cut)
+}
+
+/** Visits inline images in send order and replaces the ones `remove` selects; unchanged messages keep their identity. */
+function replaceImages(messages: ModelMessage[], remove: (bytes: number) => boolean) {
+  const isImage = (mime: string | undefined) => mime?.toLowerCase().startsWith("image/") ?? false
+  const placeholder = () => ({ type: "text" as const, text: IMAGE_REMOVED })
+  return messages.map((message) => {
+    if (typeof message.content === "string") return message
+    const parts: Exclude<ModelMessage["content"], string>[number][] = message.content
+    const content = parts.map((part) => {
+      if (part.type === "image") return remove(inlineBytes(part.image)) ? placeholder() : part
+      if (part.type === "file") return isImage(part.mediaType) && remove(inlineBytes(part.data)) ? placeholder() : part
+      if (part.type !== "tool-result" || part.output.type !== "content") return part
+      const output = part.output
+      const value = output.value.map((item) =>
+        "data" in item && isImage(item.mediaType) && remove(item.data.length) ? placeholder() : item,
+      )
+      return value.every((item, i) => item === output.value[i]) ? part : { ...part, output: { ...output, value } }
+    })
+    return content.every((part, i) => part === parts[i]) ? message : ({ ...message, content } as ModelMessage)
+  })
+}
+
+// Base64 and data URLs are ASCII, so a string's length is its size. Remote URLs carry no inline payload.
+function inlineBytes(data: string | URL | Uint8Array | ArrayBuffer) {
+  if (data instanceof URL) return 0
+  if (typeof data === "string") return /^https?:\/\//i.test(data) ? 0 : data.length
+  return Math.ceil(data.byteLength / 3) * 4
 }
 
 export const page = Effect.fn("MessageV2.page")(function* (input: {
@@ -588,27 +652,30 @@ export const filterCompactedEffect = Effect.fnUntraced(function* (sessionID: Ses
 
 // filterCompacted reorders messages for model consumption
 // ([compaction-user, summary, ...retained tail..., continue-user]), so array
-// position is not chronological. Derive each binding by max id (MessageID
-// is monotonic via MessageID.ascending) so a pre-compaction overflowing tail
-// assistant doesn't get mistaken for the most recent turn. tasks are
-// compaction/subtask parts attached to user messages newer than the latest
-// finished assistant — i.e. unprocessed work.
+// position is not chronological. IDs are only a deterministic tie-breaker
+// because imported messages do not necessarily have monotonic IDs.
 export function latest(msgs: WithParts[]) {
   let user: User | undefined
   let assistant: Assistant | undefined
   let finished: Assistant | undefined
   for (const msg of msgs) {
     const info = msg.info
-    if (info.role === "user" && (!user || info.id > user.id)) user = info
-    if (info.role === "assistant" && (!assistant || info.id > assistant.id)) assistant = info
-    if (info.role === "assistant" && info.finish && (!finished || info.id > finished.id)) finished = info
+    if (info.role === "user" && isAfter(info, user)) user = info
+    if (info.role === "assistant" && isAfter(info, assistant)) assistant = info
+    if (info.role === "assistant" && info.finish && isAfter(info, finished)) finished = info
   }
   const tasks = msgs.flatMap((m) =>
-    finished && m.info.id <= finished.id
+    finished && !isAfter(m.info, finished)
       ? []
       : m.parts.filter((p): p is CompactionPart | SubtaskPart => p.type === "compaction" || p.type === "subtask"),
   )
   return { user, assistant, finished, tasks }
+}
+
+function isAfter(info: Info, other?: Info) {
+  if (!other) return true
+  if (info.time.created !== other.time.created) return info.time.created > other.time.created
+  return info.id > other.id
 }
 
 export function fromError(
@@ -742,3 +809,4 @@ export function fromError(
 }
 
 export * as MessageV2 from "./message-v2"
+export const node = LayerNode.group([Database.node])

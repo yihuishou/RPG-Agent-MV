@@ -1,7 +1,8 @@
 import { PermissionV1 } from "@opencode-ai/core/v1/permission"
 import { describe, expect } from "bun:test"
 import path from "path"
-import { Cause, Effect, Exit, Layer } from "effect"
+import { LayerNode } from "@opencode-ai/core/effect/layer-node"
+import { Cause, Effect, Exit } from "effect"
 import { GlobTool } from "../../src/tool/glob"
 import { SessionID, MessageID } from "../../src/session/schema"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
@@ -10,7 +11,7 @@ import { FSUtil } from "@opencode-ai/core/fs-util"
 import { Global } from "@opencode-ai/core/global"
 import { Truncate } from "@/tool/truncate"
 import { Agent } from "../../src/agent/agent"
-import { TestInstance, tmpdirScoped } from "../fixture/fixture"
+import { TestInstance } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
 import { Config } from "@/config/config"
 import { RuntimeFlags } from "@/effect/runtime-flags"
@@ -20,13 +21,8 @@ import { Permission } from "../../src/permission"
 import type * as Tool from "../../src/tool/tool"
 
 const toolLayer = (flags: Partial<RuntimeFlags.Info> = {}) =>
-  Layer.mergeAll(
-    CrossSpawnSpawner.defaultLayer,
-    FSUtil.defaultLayer,
-    Ripgrep.defaultLayer,
-    Truncate.defaultLayer,
-    Agent.defaultLayer,
-    Git.defaultLayer,
+  LayerNode.compile(
+    LayerNode.group([CrossSpawnSpawner.node, FSUtil.node, Ripgrep.node, Truncate.node, Agent.node, Git.node]),
   )
 
 const it = testEffect(toolLayer())

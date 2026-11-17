@@ -1,11 +1,11 @@
 {
   "sourceRepository": "https://github.com/anomalyco/opencode.git",
-  "sourceTag": "v1.17.7",
-  "sourceCommit": "4ed4f749e644ffb5b279fb30b7b915e743d80142",
+  "sourceTag": "v1.19.6",
+  "sourceCommit": "f4e363c8295fa90a03dddc451882fffe8fbce357",
   "runtimePackage": "opencode-ai",
-  "runtimeVersion": "1.17.7",
+  "runtimeVersion": "1.19.6",
   "sdkPackage": "@opencode-ai/sdk",
-  "sdkVersion": "1.17.7",
+  "sdkVersion": "1.19.6",
   "buildScript": "npm run build:opencode-runtime",
   "buildOutput": "runtime/out/opencode/windows-x64/opencode.exe"
 }

@@ -378,7 +378,7 @@ describe("filesystem", () => {
   describe("windowsPath()", () => {
     test("converts Git Bash paths", () => {
       if (process.platform === "win32") {
-        expect(Filesystem.windowsPath("/c/Users/test")).toBe("/tmp/host")
+        expect(Filesystem.windowsPath("/c/Users/test")).toBe("C:/Users/test")
         expect(Filesystem.windowsPath("/d/dev/project")).toBe("D:/dev/project")
       } else {
         expect(Filesystem.windowsPath("/c/Users/test")).toBe("/c/Users/test")
@@ -387,7 +387,7 @@ describe("filesystem", () => {
 
     test("converts Cygwin paths", () => {
       if (process.platform === "win32") {
-        expect(Filesystem.windowsPath("/cygdrive/c/Users/test")).toBe("/tmp/host")
+        expect(Filesystem.windowsPath("/cygdrive/c/Users/test")).toBe("C:/Users/test")
         expect(Filesystem.windowsPath("/cygdrive/x/dev/project")).toBe("X:/dev/project")
       } else {
         expect(Filesystem.windowsPath("/cygdrive/c/Users/test")).toBe("/cygdrive/c/Users/test")
@@ -396,7 +396,7 @@ describe("filesystem", () => {
 
     test("converts WSL paths", () => {
       if (process.platform === "win32") {
-        expect(Filesystem.windowsPath("/mnt/c/Users/test")).toBe("/tmp/host")
+        expect(Filesystem.windowsPath("/mnt/c/Users/test")).toBe("C:/Users/test")
         expect(Filesystem.windowsPath("/mnt/z/dev/project")).toBe("Z:/dev/project")
       } else {
         expect(Filesystem.windowsPath("/mnt/c/Users/test")).toBe("/mnt/c/Users/test")
@@ -404,7 +404,7 @@ describe("filesystem", () => {
     })
 
     test("ignores normal Windows paths", () => {
-      expect(Filesystem.windowsPath("/tmp/host")).toBe("/tmp/host")
+      expect(Filesystem.windowsPath("C:/Users/test")).toBe("C:/Users/test")
       expect(Filesystem.windowsPath("D:\\dev\\project")).toBe("D:\\dev\\project")
     })
   })

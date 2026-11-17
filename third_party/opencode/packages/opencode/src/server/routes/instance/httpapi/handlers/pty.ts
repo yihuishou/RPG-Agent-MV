@@ -6,7 +6,7 @@ import { Pty } from "@opencode-ai/core/pty"
 import { PtyProtocol } from "@opencode-ai/core/pty/protocol"
 import { PtyID } from "@opencode-ai/core/pty/schema"
 import { PtyTicket } from "@opencode-ai/core/pty/ticket"
-import { LocationServiceMap } from "@opencode-ai/core/location-layer"
+import { LocationServiceMap, locationServiceMapLayer } from "@opencode-ai/core/location-services"
 import { Location } from "@opencode-ai/core/location"
 import { AbsolutePath } from "@opencode-ai/core/schema"
 import { Shell } from "@opencode-ai/core/shell"
@@ -43,7 +43,7 @@ export const ptyHandlers = HttpApiBuilder.group(InstanceHttpApi, "pty", (handler
     const tickets = yield* PtyTicket.Service
     const cors = yield* CorsConfig
     const plugin = yield* Plugin.Service
-    const locations = yield* LocationServiceMap
+    const locations = yield* LocationServiceMap.Service
     const unregister = registerDisposer((directory) =>
       Effect.runPromise(locations.invalidate(Location.Ref.make({ directory: AbsolutePath.make(directory) }))),
     )
@@ -158,13 +158,13 @@ export const ptyHandlers = HttpApiBuilder.group(InstanceHttpApi, "pty", (handler
       .handle("remove", remove)
       .handle("connectToken", connectToken)
   }),
-).pipe(Layer.provide(LocationServiceMap.layer))
+).pipe(Layer.provide(locationServiceMapLayer))
 
 export const ptyConnectHandlers = HttpApiBuilder.group(PtyConnectApi, "pty-connect", (handlers) =>
   Effect.gen(function* () {
     const tickets = yield* PtyTicket.Service
     const cors = yield* CorsConfig
-    const locations = yield* LocationServiceMap
+    const locations = yield* LocationServiceMap.Service
     const unregister = registerDisposer((directory) =>
       Effect.runPromise(locations.invalidate(Location.Ref.make({ directory: AbsolutePath.make(directory) }))),
     )
@@ -184,6 +184,12 @@ export const ptyConnectHandlers = HttpApiBuilder.group(PtyConnectApi, "pty-conne
         params: { ptyID: PtyID }
         request: HttpServerRequest.HttpServerRequest
       }) {
+        if (!validOrigin(ctx.request, cors)) return HttpServerResponse.empty({ status: 403 })
+
+        const ticket = new URL(ctx.request.url, "http://localhost").searchParams.get(PTY_CONNECT_TICKET_QUERY)
+        if (ticket && !(yield* tickets.consume({ ticket, ptyID: ctx.params.ptyID, ...(yield* ticketScope) })))
+          return HttpServerResponse.empty({ status: 403 })
+
         const exists = yield* pty(Pty.Service.use((service) => service.get(ctx.params.ptyID))).pipe(
           Effect.map((info) => info.status === "running"),
           Effect.catchTag("Pty.NotFoundError", () => Effect.succeed(false)),
@@ -192,13 +198,6 @@ export const ptyConnectHandlers = HttpApiBuilder.group(PtyConnectApi, "pty-conne
 
         const query = Schema.decodeUnknownOption(CursorQuery)(yield* HttpServerRequest.ParsedSearchParams)
         if (Option.isNone(query)) return HttpServerResponse.empty({ status: 400 })
-        const ticket = new URL(ctx.request.url, "http://localhost").searchParams.get(PTY_CONNECT_TICKET_QUERY)
-        if (ticket) {
-          const valid = validOrigin(ctx.request, cors)
-            ? yield* tickets.consume({ ticket, ptyID: ctx.params.ptyID, ...(yield* ticketScope) })
-            : false
-          if (!valid) return HttpServerResponse.empty({ status: 403 })
-        }
         const parsedCursor = query.value.cursor === undefined ? undefined : Number(query.value.cursor)
         const cursor =
           parsedCursor !== undefined && Number.isSafeInteger(parsedCursor) && parsedCursor >= -1
@@ -270,4 +269,4 @@ export const ptyConnectHandlers = HttpApiBuilder.group(PtyConnectApi, "pty-conne
       }),
     )
   }),
-).pipe(Layer.provide(LocationServiceMap.layer))
+).pipe(Layer.provide(locationServiceMapLayer))

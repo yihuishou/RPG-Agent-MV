@@ -22,7 +22,9 @@
       { "title": "MCP 工具", "path": "4-agent-system/4.1-mcp-tools.md" },
       { "title": "技能", "path": "4-agent-system/4.2-skill.md" },
       { "title": "子 Agent", "path": "4-agent-system/4.3-subagent.md" },
-      { "title": "规则", "path": "4-agent-system/4.4-rules.md" }
+      { "title": "规则", "path": "4-agent-system/4.4-rules.md" },
+      { "title": "技能配置", "path": "4-agent-system/4.5-skill-configuration.md" },
+      { "title": "OpenCode 运行时升级评估", "path": "4-agent-system/4.6-opencode-runtime-upgrade.md" }
     ]},
     { "title": "常见问题", "pages": [
       { "title": "常见问题", "path": "5-faq/5.1-questions.md" },
@@ -53,7 +55,9 @@
       { "title": "MCP Tools", "path": "en/agent-system/mcp-tools.md" },
       { "title": "Skills", "path": "en/agent-system/skill.md" },
       { "title": "Subagents", "path": "en/agent-system/subagent.md" },
-      { "title": "Rules", "path": "en/agent-system/rules.md" }
+      { "title": "Rules", "path": "en/agent-system/rules.md" },
+      { "title": "Skill Configuration", "path": "en/agent-system/skill-configuration.md" },
+      { "title": "OpenCode Runtime Upgrade Assessment", "path": "en/agent-system/opencode-runtime-upgrade.md" }
     ]},
     { "title": "FAQ", "pages": [
       { "title": "Questions", "path": "en/faq/questions.md" },

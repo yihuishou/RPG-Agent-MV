@@ -18,9 +18,9 @@ Bundled Runtime Components
 opencode
 - Use in RPG-Agent-MV: bundled agent runtime executable and SDK integration.
 - Source: https://github.com/anomalyco/opencode.git
-- Version: 1.17.7
-- Source tag: v1.17.7
-- Source commit: 4ed4f749e644ffb5b279fb30b7b915e743d80142
+- Version: 1.19.6
+- Source tag: v1.19.6
+- Source commit: f4e363c8295fa90a03dddc451882fffe8fbce357
 - License: MIT
 - Copyright notice: Copyright (c) 2025 opencode
 - Local notice source: third_party/opencode/LICENSE
@@ -46,8 +46,8 @@ Packaged JavaScript Dependencies
 --------------------------------
 
 Root runtime dependencies:
-- @opencode-ai/sdk 1.17.7, MIT
-- opencode-ai 1.17.7, MIT
+- @opencode-ai/sdk 1.19.6, MIT
+- opencode-ai 1.19.6, MIT
 - cross-spawn 7.0.6, MIT
 - path-key 3.1.1, MIT
 - shebang-command 2.0.0, MIT

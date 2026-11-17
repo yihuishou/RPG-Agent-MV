@@ -1,7 +1,8 @@
 import { afterEach, describe, expect } from "bun:test"
 import path from "path"
 import fs from "fs/promises"
-import { Cause, Deferred, Effect, Exit, Fiber, Layer } from "effect"
+import { LayerNode } from "@opencode-ai/core/effect/layer-node"
+import { Cause, Deferred, Effect, Exit, Fiber } from "effect"
 import { EditTool } from "../../src/tool/edit"
 import { disposeAllInstances, TestInstance } from "../fixture/fixture"
 import { LSP } from "@/lsp/lsp"
@@ -30,13 +31,8 @@ afterEach(async () => {
   await disposeAllInstances()
 })
 
-const layer = Layer.mergeAll(
-  LSP.defaultLayer,
-  FSUtil.defaultLayer,
-  Format.defaultLayer,
-  EventV2Bridge.defaultLayer,
-  Truncate.defaultLayer,
-  Agent.defaultLayer,
+const layer = LayerNode.compile(
+  LayerNode.group([LSP.node, FSUtil.node, Format.node, EventV2Bridge.node, Truncate.node, Agent.node]),
 )
 
 const it = testEffect(layer)

@@ -1,4 +1,5 @@
 import { PermissionV1 } from "@opencode-ai/core/v1/permission"
+import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { describe, expect } from "bun:test"
 import path from "path"
 import { Effect } from "effect"
@@ -7,11 +8,10 @@ import type { Tool } from "@/tool/tool"
 import { assertExternalDirectoryEffect } from "../../src/tool/external-directory"
 import { Filesystem } from "@/util/filesystem"
 import { TestInstance, tmpdirScoped } from "../fixture/fixture"
-import type { Permission } from "../../src/permission"
 import { SessionID, MessageID } from "../../src/session/schema"
 import { testEffect } from "../lib/effect"
 
-const it = testEffect(CrossSpawnSpawner.defaultLayer)
+const it = testEffect(LayerNode.compile(CrossSpawnSpawner.node))
 
 const baseCtx: Omit<Tool.Context, "ask"> = {
   sessionID: SessionID.make("ses_test"),

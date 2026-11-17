@@ -11,6 +11,8 @@ const root = process.cwd();
 const opencodeRoot = join(root, "third_party", "opencode");
 const packageJsonPath = join(opencodeRoot, "packages", "opencode", "package.json");
 const lockfilePath = join(opencodeRoot, "bun.lock");
+// Single source of truth for the vendored version; the build embeds it into the binary.
+const vendorMetadataPath = join(opencodeRoot, "RPG_AGENT_VENDOR.json");
 const outputBinary = join(opencodeRoot, "packages", "opencode", "dist", "opencode-windows-x64", "bin", "opencode.exe");
 const runtimeOutDir = join(root, "runtime", "out", "opencode", "windows-x64");
 const runtimeBinary = join(runtimeOutDir, "opencode.exe");
@@ -27,8 +29,15 @@ function run(command: string, env: NodeJS.ProcessEnv = process.env): void {
   });
 }
 
+const vendoredVersion = (() => {
+  const metadata = JSON.parse(readFileSync(vendorMetadataPath, "utf8")) as { sourceTag?: string; runtimeVersion?: string };
+  const tag = metadata.sourceTag?.trim();
+  if (tag?.startsWith("v")) return tag.slice(1);
+  return metadata.runtimeVersion?.trim() || "";
+})();
+
 if (!existsSync(packageJsonPath) || !existsSync(lockfilePath)) {
-  throw new Error("missing vendored opencode source; expected third_party/opencode at v1.17.7");
+  throw Error(`missing vendored opencode source; expected third_party/opencode at v${vendoredVersion}`);
 }
 
 run("bun install --cwd third_party/opencode --frozen-lockfile");
@@ -40,7 +49,7 @@ try {
   run("bun run --cwd third_party/opencode/packages/opencode build --single --skip-embed-web-ui", {
     ...process.env,
     OPENCODE_CHANNEL: "latest",
-    OPENCODE_VERSION: "1.17.7",
+    OPENCODE_VERSION: vendoredVersion,
   });
 
   if (!existsSync(outputBinary)) {

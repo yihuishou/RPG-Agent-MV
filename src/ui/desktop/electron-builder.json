@@ -61,7 +61,12 @@
     },
     {
       "from": "../../../src/backend/node_modules",
-      "to": "app/src/backend/node_modules"
+      "to": "app/src/backend/node_modules",
+      "filter": [
+        "**/*",
+        "!rpg-agent-mv",
+        "!rpg-agent-mv/**/*"
+      ]
     }
   ],
   "files": [

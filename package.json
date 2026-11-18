@@ -6,7 +6,7 @@
   "description": "RPG Maker MV indexing and patching tools for agent workflows.",
   "author": "RPG Agent MV contributors",
   "scripts": {
-    "install:deps": "npm install --ignore-scripts && npm --prefix src/backend install --no-save && npm --prefix src/ui/desktop install --no-save",
+    "install:deps": "npm install --ignore-scripts && npm --prefix src/backend install --no-save && npm --prefix src/ui/desktop install --no-save && node -e \"const fs=require('node:fs'); for (const p of ['src/backend/node_modules/rpg-agent-mv','src/ui/desktop/node_modules/rpg-agent-mv']) { fs.rmSync(p, { force: true, recursive: true }); }\"",
     "check:local": "npm run install:deps && npm run build:opencode-runtime && npm test && node -e \"const cp=require('node:child_process'); const path=require('node:path'); const bin=path.join('runtime','out','opencode','windows-x64','opencode.exe'); cp.execFileSync(bin, ['--version'], {stdio:'inherit'});\"",
     "build:opencode-runtime": "node --experimental-strip-types src/backend/src/core/desktop/build-opencode-runtime.ts",
     "test": "npm --prefix src/backend test && npm --prefix src/ui/desktop test",
